@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>G502 X Control Center</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="mock-banner" class="mock-banner" hidden>
+  MOCK MODE &mdash; <span id="mock-reason"></span>. No real mouse is being changed.
+</div>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-mark"></div>
+      <div>
+        <div class="logo-title">Mouse Control</div>
+        <div class="logo-sub" id="device-name">G502 X</div>
+      </div>
+    </div>
+
+    <nav class="nav">
+      <button class="nav-item active" data-section="buttons">
+        <span class="dot" style="background:#3ec4ff"></span>Buttons
+      </button>
+      <button class="nav-item" data-section="sensitivity">
+        <span class="dot" style="background:#7c5cff"></span>Sensitivity
+      </button>
+      <button class="nav-item" data-section="profiles">
+        <span class="dot" style="background:#ffd23e"></span>Profiles
+      </button>
+      <button class="nav-item" data-section="settings">
+        <span class="dot" style="background:#9aa0aa"></span>Settings
+      </button>
+    </nav>
+
+    <div class="spacer"></div>
+    <div class="status-card">
+      <div class="status-row">
+        <span class="status-label">Connection</span>
+        <span class="status-value" id="status-mode">&mdash;</span>
+      </div>
+      <div class="status-note" id="status-note"></div>
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- BUTTONS -->
+    <section class="section" id="section-buttons">
+      <h1>Button Assignment</h1>
+      <p class="subtitle">Click a marker on the mouse, or a row below, to remap that button.</p>
+
+      <div class="buttons-layout">
+        <div class="mouse-card">
+          <div class="mouse-image-wrap">
+            <img src="assets/mouse-illustration.png" alt="G502 X top view" class="mouse-image">
+            <div class="markers" id="markers"></div>
+          </div>
+          <p class="verify-hint">
+            Not sure a marker is right? Use <b>Settings &rarr; Verify mapping</b> to test it
+            against your real mouse.
+          </p>
+        </div>
+
+        <div class="button-list" id="button-list"></div>
+      </div>
+
+      <div class="editor" id="button-editor" hidden>
+        <div class="editor-header">
+          <span id="editor-title">Button</span>
+          <button class="btn-close" id="editor-close">&times;</button>
+        </div>
+        <div class="editor-body">
+          <label class="field-label">Action type</label>
+          <select id="action-type">
+            <option value="button">Mouse button</option>
+            <option value="key">Keyboard key</option>
+            <option value="special">Special action</option>
+            <option value="macro">Macro</option>
+            <option value="disabled">Disabled</option>
+          </select>
+
+          <div id="action-value-wrap"></div>
+
+          <button class="btn-primary" id="action-apply">Apply</button>
+          <div class="editor-error" id="editor-error" hidden></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SENSITIVITY -->
+    <section class="section" id="section-sensitivity" hidden>
+      <h1>Sensitivity</h1>
+      <p class="subtitle">Dial DPI in with the slider, type an exact value, or jump to a stage.</p>
+
+      <div class="dpi-card">
+        <div class="dpi-value-row">
+          <input type="number" id="dpi-number" class="dpi-number">
+          <div class="dpi-unit">DPI</div>
+        </div>
+        <input type="range" id="dpi-slider" class="dpi-slider" min="100" max="26000" step="50">
+        <div class="dpi-range-labels">
+          <span id="dpi-min-label"></span>
+          <span id="dpi-max-label"></span>
+        </div>
+      </div>
+
+      <div class="stages-card">
+        <div class="card-label">DPI Stages</div>
+        <div class="stages" id="dpi-stages"></div>
+      </div>
+
+      <div class="stages-card">
+        <div class="card-label">Polling Rate</div>
+        <div class="stages" id="rate-options"></div>
+      </div>
+    </section>
+
+    <!-- PROFILES -->
+    <section class="section" id="section-profiles" hidden>
+      <h1>Onboard Profiles</h1>
+      <p class="subtitle">Switch which profile is active on the mouse.</p>
+      <div class="profiles-list" id="profiles-list"></div>
+    </section>
+
+    <!-- SETTINGS -->
+    <section class="section" id="section-settings" hidden>
+      <h1>Settings</h1>
+      <div class="settings-card">
+        <div class="card-label">Connection</div>
+        <p id="settings-status"></p>
+      </div>
+      <div class="settings-card">
+        <div class="card-label">Verify button mapping</div>
+        <p class="subtitle">
+          The index &rarr; physical button correspondence is auto-detected from your mouse's
+          current button actions, not hardcoded &mdash; but it can be wrong if you've already
+          remapped buttons away from their factory defaults. To confirm a marker for yourself:
+        </p>
+        <ol class="verify-steps">
+          <li>Pick a button whose identity you want to confirm.</li>
+          <li>Set its action to <b>Keyboard key</b> &rarr; a key you don't normally use (e.g. <code>KEY_F13</code>).</li>
+          <li>Run <code>xev</code> or <code>showkey</code> in a terminal, then physically press that button on the mouse.</li>
+          <li>Whichever marker's key shows up is the physical button you pressed &mdash; relabel it below if it doesn't match.</li>
+        </ol>
+        <div class="card-label" style="margin-top:18px;">Manual label overrides</div>
+        <div id="overrides-list"></div>
+      </div>
+      <div class="settings-card">
+        <div class="card-label">Not supported by ratbagctl</div>
+        <p class="subtitle">RGB lighting and battery level aren't exposed here: the G502 X has no RGB, and ratbagctl's CLI has no battery-level command.</p>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="app.js"></script>
+</body>
+</html>
