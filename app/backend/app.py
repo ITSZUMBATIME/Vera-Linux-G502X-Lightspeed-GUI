@@ -179,13 +179,21 @@ def detect_roles(buttons) -> dict[int, dict]:
 # hardcoded snapshot of this specific G502 X's actual factory button
 # actions, captured directly from `ratbagctl button N get` before any
 # remapping happened.
+# NB: this is the user's confirmed-working baseline for this specific mouse,
+# not necessarily the literal out-of-box factory state -- indices 3/5 are
+# swapped from the standard HID convention (button 4/5) because that's how
+# this system actually interprets back/forward, and index 4 carries the
+# user's own Thumb Button macro rather than its original 'second-mode'
+# action. "Restore defaults" is a recovery safety net for profile drift/
+# stray edits, so it should recover to what the user actually wants running,
+# not to Logitech's factory shipment state.
 FACTORY_BUTTON_DEFAULTS = {
     0: ("button", "1"),
     1: ("button", "2"),
     2: ("button", "3"),
-    3: ("button", "4"),
-    4: ("special", "second-mode"),
-    5: ("button", "5"),
+    3: ("button", "5"),
+    4: ("macro", "KEY_SEMICOLON"),
+    5: ("button", "4"),
     6: ("special", "wheel-left"),
     7: ("special", "wheel-right"),
     8: ("special", "profile-cycle-up"),
@@ -201,6 +209,8 @@ def _apply_button_default(index: int, action_type: str, value: str, profile: int
         client.set_button_special(device_id, index, value, profile=profile)
     elif action_type == "key":
         client.set_button_key(device_id, index, value, profile=profile)
+    elif action_type == "macro":
+        client.set_button_macro(device_id, index, value.split(), profile=profile)
     elif action_type == "disabled":
         client.set_button_disabled(device_id, index, profile=profile)
 

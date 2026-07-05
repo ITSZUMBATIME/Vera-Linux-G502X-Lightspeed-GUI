@@ -1,125 +1,184 @@
 # G502 X Control Center — status & plan
 
-## IMPORTANT lesson from last time — commit and push every session
+## IMPORTANT — commit and push every session
 
-A previous session built this entire app (this same architecture: Flask +
-ratbagctl + mock fallback + HTML/CSS/JS frontend + Electron shell) but never
-committed/pushed it. That session's container was reclaimed and the work was
-gone — the repo had nothing but a 2-line README when this session started.
-**Remote sessions run in ephemeral containers. If it isn't committed and
-pushed, it does not exist next session.** Commit early and often, not just at
-the very end.
+A previous session built this entire app but never committed/pushed it, and
+lost a full day of work when its container was reclaimed. **If it isn't
+committed and pushed, it does not exist next session.** Commit early and
+often, not just at the end. (This session made the same near-miss: a large
+amount of work sat uncommitted until explicitly asked for at wrap-up —
+don't wait to be asked.)
 
-## What exists right now
+## What this is
 
-- `app/backend/` — Flask app (`app.py`) wrapping `ratbagctl` (`ratbag_client.py`),
-  with a `MockRatbagClient` fallback for dev/testing without hardware.
-- `app/frontend/` — plain HTML/CSS/JS, dark UI, mouse diagram with clickable
-  button markers, DPI/rate/profile controls.
-- `app/electron/` — desktop shell, spawns the backend and loads the frontend.
-- `app/README.md` — exact setup/run commands, including real-hardware steps.
-- `app/frontend/assets/mouse-illustration.png` — G502 X top-view line art,
-  extracted from the Claude Design mockup (see below).
+A Flask + vanilla JS/HTML/CSS app for configuring a Logitech G502 X
+LIGHTSPEED on Linux via `ratbagctl`/`ratbagd`, tailored to one specific
+physical mouse (not a general product) — several things below are hardcoded
+because they were empirically confirmed against *this* mouse, not assumed.
 
-Verified in this sandbox with `RATBAG_MODE=mock` only (curl'd every endpoint,
-screenshotted every UI section with Playwright, exercised the button editor
-end-to-end). **Never run against a real mouse** — this sandbox has no dbus,
-no ratbagd, no USB access. That verification is the next session's job (or
-yours, right now, on your actual machine — see `app/README.md` §2).
+- `app/backend/app.py` — Flask routes, role auto-detection, factory-defaults
+  recovery.
+- `app/backend/ratbag_client.py` — `RealRatbagClient` (shells out to
+  `ratbagctl`) and `MockRatbagClient` (in-memory, for dev without hardware).
+- `app/frontend/` — plain HTML/CSS/JS. No build step; edit and reload.
+- `app/electron/` — desktop shell, untouched this session; still just spawns
+  the backend and loads the frontend in a window. Not verified against the
+  current backend/frontend by this session — someone should smoke-test it
+  before relying on it.
 
-## Where the design came from
+## The button model — confirmed by physical wiggle-testing, not assumed
 
-There was a Claude Design mockup (`G502X Control Center.dc.html` mentioned in
-the original brief) but it didn't exist anywhere in this repo or session —
-the user re-exported it as a "Standalone" bundled HTML from Claude Design and
-pasted the path in. That bundle format wraps the real component template as
-an escaped JSON string inside a `<script type="__bundler/template">` tag,
-plus a `<script type="__bundler/manifest">` blob with embedded base64
-resources (fonts + one PNG). If this happens again: extract the manifest and
-template scripts by JSON-decoding their contents (they're JSON string
-literals, not raw HTML) rather than trying to read the bundle file directly —
-it's one file with ~300KB single-line strings that neither Read nor grep
-handle usefully as-is.
+This mouse has **11 raw `ratbagctl` button indices (0–10)**, of which:
+- **10 correspond to real physical buttons.**
+- **Index 10** (factory action `resolution-down`) has no physical button at
+  all — hidden from the UI entirely (`EXCLUDED_BUTTON_INDICES` in `app.js`).
 
-The extracted mockup was a **pure client-side prototype** (fake state, no
-backend) with an 11-button model (`left, right, middle, wheelLeft,
-wheelRight, button6, button7, button8, forward, backward, thumb`) and marker
-coordinates that turned out **not** to be well aligned to its own reference
-image (verified by overlaying the coordinates on the image — see below). Its
-own code comment claimed the coordinates were "hand-aligned to the real
-button locations," but they weren't when actually plotted.
+Confirmed roles (index is the raw 0-based `ratbagctl` index; the UI displays
+`index + 1`, i.e. 1-based, because the user found starting at 0 confusing):
 
-## The button model — corrected to match real hardware
+| index | role | factory action | notes |
+|---|---|---|---|
+| 0 | left | `button 1` | |
+| 1 | right | `button 2` | |
+| 2 | middle | `button 3` | |
+| 3 | backward | `button 4` factory, **now `button 5`** | see swap below |
+| 4 | dpiShift ("Thumb Button") | `second-mode` factory, **now a macro** | see below |
+| 5 | forward | `button 5` factory, **now `button 4`** | see swap below |
+| 6 | wheelLeft | `wheel-left` | |
+| 7 | wheelRight | `wheel-right` | |
+| 8 | button7 ("Index Finger 1") | `profile-cycle-up` | not yet reconfigured, see Open items |
+| 9 | button8 ("Index Finger 2") | `resolution-up` | not yet reconfigured, see Open items |
+| 10 | *(hidden)* | `resolution-down` | no physical button |
 
-The G502 X / G502 X LIGHTSPEED has **8 programmable buttons**, not 11 —
-Logitech dropped 3 buttons (and RGB) from the original G502 to save weight/
-power. This was confirmed two ways:
-1. The reference PNG itself has "G7"/"G8" labels on the two thumb buttons
-   and "G9" on the button behind the wheel — these are Logitech's own official
-   button numbers, drawn right on the art.
-2. Logitech's G502 X spec sheet lists "8 programmable buttons."
+**Forward/Backward are deliberately swapped from the standard HID
+convention.** Standard USB HID numbering says button 4 = back, button 5 =
+forward, and `app.py`'s `detect_roles()` originally assumed this. On this
+user's actual system, back/forward navigation only worked correctly with it
+reversed — confirmed by the user directly, not a guess. Both
+`_BUTTON_NUMBER_TO_ROLE` in `app.py` (auto-detection) and
+`FACTORY_BUTTON_DEFAULTS` (restore-defaults baseline) have been updated to
+match. **If you ever "fix" this back to 4=back/5=forward because it looks
+wrong, you'll be reintroducing a bug the user explicitly corrected.**
 
-Final model: `left, right, middle, wheelLeft, wheelRight, back (G7), forward
-(G8), g9 (DPI shift / sniper, behind the wheel)`.
+**"Thumb Button" and "DPI Shift" are the same physical button** (index 4),
+confirmed by wiggle-test (bound to a distinct test key, watched `showkey`
+while pressing). GHUB's name for it is "DPI-Shift", but the user uses it as
+a plain macro button (currently a single-key macro sending `KEY_SEMICOLON`)
+— it is NOT restricted to DPI-shift functionality, that's just Logitech's
+default framing in their own software. Index Finger 1/2 (indices 8/9) are
+*separate* physical buttons from the thumb one — confirmed as a distinct
+fact from the user, not inferred.
 
-Marker pixel coordinates in `app/frontend/app.js` (`BUTTON_DEFS`) were
-re-measured by cropping the reference PNG with a pixel grid overlaid and
-reading off where each real button/label actually sits, then verified by
-plotting the candidate coordinates back onto the image and eyeballing the
-result (see the overlay screenshots process in this session's history if you
-need to redo it — group of `grid_*.png` / `overlay*.png` scratch files).
-Trust these coordinates more than anything from memory.
+**Button labels/order are user-customized** (`BUTTON_DEFS` array in
+`app.js`): Left, Right, Middle, Forward, Backward, Thumb Button, Wheel Tilt
+Left, Wheel Tilt Right, Index Finger 1, Index Finger 2. This exact order was
+requested repeatedly and specifically — don't reorder it without being
+asked. Marker `x`/`y` positions were calibrated by the user dragging markers
+onto the real mouse image (Buttons page → Calibrate marker positions →
+Copy calibration JSON) — trust these coordinates.
 
-## The actual open question: index ↔ physical button
+## Index ↔ physical button: still index-dependent, not name-dependent
 
-**This still cannot be verified without your real mouse**, and no static
-table exists anywhere (libratbag has no per-device button list for the G502 X
-— `data/devices/logitech-g502-x-wireless.device` just says
-`Driver=hidpp20`; buttons are enumerated at runtime from the live device's
-HID++ control-ID table, whose order isn't documented anywhere offline).
+Auto-detection infers identity from a button's *current action*
+(`detect_roles` in `app.py`), not from a fixed index table — libratbag has
+no per-device button list for this mouse, and the enumeration order isn't
+documented anywhere. This means: **the moment a button is remapped away
+from the action `detect_roles` recognizes, it goes "unidentified" until a
+manual override is set** (Settings → Manual label overrides, stored in the
+browser's `localStorage`). This bit the user hard this session — e.g.
+rebinding the Thumb Button's factory `second-mode` action away made it
+vanish from auto-detection, and a subsequent UI click landed on the wrong
+row/marker as a result. If you add more custom bindings, expect this and
+set overrides proactively rather than waiting for confusion.
 
-Instead of guessing, the backend (`app.py::detect_roles`) infers each
-button's identity from its **current action**, using conventions that hold
-regardless of index order:
-- a button whose action is "button N" where N ∈ {1..5} is a main/back/forward
-  click, by standard USB HID numbering (1=left, 2=right, 3=middle, 4=back,
-  5=forward)
-- a `wheel-left` / `wheel-right` special is a wheel tilt button
-- a `resolution-*` / `second-mode` special is G9 (DPI shift / sniper)
+## Known hardware/driver quirks (all confirmed this session, not theoretical)
 
-Anything that doesn't match (including any button you've already remapped
-away from its factory default) shows up as **unidentified** in the UI — red
-marker, no assumed label — rather than a guessed one. The Settings page has
-a manual override (stored in browser `localStorage`) plus a documented
-wiggle-test procedure (map to an unused key, watch `xev`, press the physical
-button) so you can confirm/correct it against your actual hardware.
+1. **This mouse has 5 onboard profiles**, and `ratbagctl` button/resolution
+   commands operate on "the active profile" unless one is given explicitly.
+   **`ratbagd`'s reported active profile has repeatedly drifted from what
+   the hardware is actually running** — the cause of several confusing bugs
+   this session (Forward/Backward silently swapping back, Thumb Button
+   reverting, stray leftover test bindings surfacing later). The fix:
+   `FACTORY_BUTTON_DEFAULTS`/`restore-defaults` and any one-off hardware
+   fixes should target **all 5 profiles explicitly** (`ratbagctl <dev>
+   profile N button M action set ...`), never rely on "whatever's active."
+   `set_button_*` methods in `ratbag_client.py` all take an optional
+   `profile:` kwarg for this.
+2. **The `ratbagctl` CLI address (`crooning-chinchilla`, `raging-hutia`,
+   etc.) is a random nickname per wireless *connection*, not a stable
+   device identifier** — it can change on reconnect. `app.py` handles this:
+   `_refresh_device_id()` re-resolves by the device's stable *name* via
+   `ratbagctl list`, and the `@with_device_reconnect` decorator on every
+   route retries once automatically. `/api/status` does a live check every
+   call (not cached) so the UI's connection dot reflects reality.
+3. **This `ratbagctl` version's output format doesn't match libratbag's
+   documented/upstream format in several places** (all fixed in
+   `ratbag_client.py`, and worth knowing if a version upgrade changes them
+   again):
+   - `dpi get` returns `"800dpi"` (unit suffix), not a bare number.
+   - Disabled buttons print `Button: N is mapped to none` (bare, unquoted),
+     not `'disabled'`.
+   - `key`/`macro` actions print the type keyword *outside* the quotes
+     (`is mapped to key 'KEY_A'`), not inside them.
+   - `dpi get-all` returns every *legal* DPI value (~90 entries), not the
+     device's actual configured resolution stages — those must be read via
+     `resolution N get` per slot (5 slots on this mouse).
+   - Setting the active resolution is `resolution active set N`, not
+     `resolution N active set` (argument order, not a formatting quirk).
+4. **Empty macros are silently corrupted, not rejected, by `ratbagctl`** —
+   sending zero tokens produces a garbage `macro 'None'` binding rather than
+   an error. `app.py`'s `/api/button/<index>` now rejects empty macro token
+   lists with a 400 before they reach `ratbagctl`.
 
-**When you run this for real**: check Settings → the override list for each
-button index, confirm the auto-detected role actually matches by pressing
-each physical button once (or trust it if it already matches your factory
-config), and fix any that are wrong. Report back anything that's wrong so the
-detection heuristic can be improved rather than just overridden client-side.
+## Performance
 
-## Explicitly not implemented
+`/api/device` (full snapshot) makes ~28 separate `ratbagctl` subprocess
+calls (one per button, one per resolution slot, one per profile, etc.),
+each ~80-100ms — roughly 2.3 seconds. It's used **once, at page load only**.
+Every action afterward uses a narrower endpoint that only refetches what
+that action could have changed:
+- `/api/buttons` (~12 calls, ~1s) after a button rebind or restore-defaults.
+- `/api/sensitivity` (~9 calls, ~0.7s) after a DPI/rate/resolution change.
 
-- RGB lighting — the G502 X has none.
-- Battery level — `ratbagctl`'s CLI has no command for it (the underlying
-  `ratbagd` D-Bus API might expose it via `RatbagdDevice.battery_level`, but
-  `ratbagctl` doesn't surface it, and this app only shells out to
-  `ratbagctl`, not raw D-Bus).
-- A macro builder UI — button editor takes ratbagctl's raw macro syntax
-  (`KEY_A t50 -KEY_A`) as free text instead of faking a visual macro editor
-  the backend can't really back.
+If you add a new kind of state to track, follow this pattern — don't route
+its refresh through the full `/api/device`/`loadDevice()` path.
 
-## Next steps
+## Removed this session
 
-1. Run `app/backend` in `RATBAG_MODE=real` on your machine per
-   `app/README.md`, confirm `ratbagctl list` sees the mouse first.
-2. Go through every button in the UI and confirm/correct its detected role.
-3. Confirm DPI stages, polling rate, and profile switching actually change
-   the mouse (LEDs/onboard memory, `ratbagctl <device> ... get` from another
-   terminal, etc.).
-4. If something in `ratbag_client.py`'s command/parsing assumptions is wrong
-   against your real `ratbagctl` version, fix the regexes/format strings
-   there — they were sourced from libratbag's `tools/ratbagctl.body.py.in` on
-   GitHub, not from a local install, so a version skew is possible.
+- **Profiles page** — user only uses one profile; onboard-profile switching
+  UI was removed. (`/api/profile`, `/api/profile/<n>/name` backend routes
+  still exist and work, just aren't exposed in the UI.)
+- **Macros page** — was a from-scratch reimplementation of the original
+  Claude Design mockup's macro builder (named macros, step list, reorder,
+  key-capture), removed as redundant once the per-button editor could do
+  the same thing. The shared key-capture modal (`openKeyCaptureModal` /
+  `KEYCODE_MAP` in `app.js`) stayed — it's also used by the button editor's
+  "Press key…" button, so don't delete it if asked to remove macro-related
+  code again.
+- **Raw "Macro" option in the button editor** — also removed as redundant.
+  A button already holding a macro shows a note pointing at... nothing now
+  (Macros page is gone too) — it just says to pick a different action type
+  to replace it. Macros can currently only be set by directly hitting
+  `POST /api/button/<index>` with `{type: "macro", value: "<tokens>"}`
+  (e.g. via `restore-defaults`'s `FACTORY_BUTTON_DEFAULTS`, or curl). There
+  is currently **no UI path to create a new macro** — if the user wants
+  that back, it needs a new affordance, not a revert.
+
+## Open items
+
+1. **Index Finger 1/2 (indices 8/9) are not yet configured** — still
+   holding their factory actions (`profile-cycle-up`/`resolution-up`). User
+   plans to unbind them in GHUB (their DPI-changing behavior is apparently
+   coming from GHUB, not `ratbagd`/this app — GHUB and this app are
+   presumably configuring the same onboard memory, so check for conflicts
+   if behavior seems to fight itself) and will ask for these to be
+   configured later.
+2. **Electron shell (`app/electron/`) hasn't been touched or re-verified**
+   this session against the current backend/frontend (button model,
+   removed Macros page, new endpoints). Don't assume it works — check
+   `app/electron/main.js` (or equivalent) still points at valid routes/DOM
+   IDs before telling the user to rely on it.
+3. **README.md** setup instructions are still accurate for the basic
+   run/setup flow, but its "Verifying the button-marker mapping" section
+   pre-dates the swapped Forward/Backward convention and the Thumb Button
+   naming above — worth a pass if it causes confusion.

@@ -79,8 +79,14 @@ device, and can vary. Instead, on every load the backend inspects each
 button's *current* action and infers its physical identity from convention
 (a button mapped to its own USB HID number is a main/back/forward click; a
 `wheel-left`/`wheel-right` special is a tilt button; a resolution/second-mode
-special behind the wheel is G9). Anything it can't infer shows up marked
-**unidentified** in the UI (red marker) rather than a guessed label.
+special behind the wheel is the Thumb Button/DPI-Shift). Anything it can't
+infer shows up marked **unidentified** in the UI (red marker) rather than a
+guessed label.
+
+Note: on this specific mouse, Forward/Backward ended up bound to the
+*opposite* HID button numbers from the standard convention (button 4 =
+forward, button 5 = backward) — confirmed by testing actual back/forward
+navigation, not a bug. See `CLAUDE.md` before "fixing" this back.
 
 To double check any marker against your actual hardware:
 

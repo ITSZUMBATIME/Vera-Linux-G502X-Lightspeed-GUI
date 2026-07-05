@@ -621,7 +621,7 @@ async function main() {
   document.getElementById("key-capture-cancel").addEventListener("click", closeKeyCaptureModal);
 
   document.getElementById("restore-defaults-btn").addEventListener("click", async () => {
-    if (!confirm("Reset every button to its factory action? This can't be undone.")) return;
+    if (!confirm("Reset every button to your confirmed working setup (across all 5 profiles)? This can't be undone.")) return;
     try {
       await api("/api/buttons/restore-defaults", { method: "POST" });
       showToast("Buttons restored to factory defaults");
