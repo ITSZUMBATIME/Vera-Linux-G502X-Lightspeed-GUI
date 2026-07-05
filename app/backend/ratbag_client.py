@@ -50,7 +50,7 @@ class DeviceState:
 
 
 BUTTON_LINE_RE = re.compile(
-    r"Button:\s*(\d+)\s*is mapped to\s*(?:'([^']*)'|(disabled))"
+    r"Button:\s*(\d+)\s*is mapped to\s*(?:(key|macro)\s+)?(?:'([^']*)'|(disabled)|(none))"
 )
 RESOLUTION_LINE_RE = re.compile(
     r"^\s*(\d+):\s*([0-9x]+)dpi(\s*\(active\))?(\s*\(default\))?(\s*\(disabled\))?"
@@ -62,17 +62,22 @@ def _parse_button_line(line: str) -> Optional[Button]:
     if not m:
         return None
     index = int(m.group(1))
-    body = m.group(2)
+    prefix = m.group(2)  # "key" | "macro" | None, printed outside the quotes
+    body = m.group(3)
+    disabled_kw = m.group(4)
+    none_kw = m.group(5)  # bare "none", printed unquoted for a disabled button
+    if disabled_kw is not None or none_kw is not None:
+        return Button(index, "none", "disabled", raw=line)
+    if prefix == "key":
+        return Button(index, "key", body, raw=line)
+    if prefix == "macro":
+        return Button(index, "macro", body, raw=line)
     if body is None:
         return Button(index, "none", "disabled", raw=line)
     if body == "none":
         return Button(index, "none", "", raw=line)
     if body.startswith("button "):
         return Button(index, "button", body.split(" ", 1)[1], raw=line)
-    if body.startswith("key "):
-        return Button(index, "key", body.split(" ", 1)[1].strip("'\""), raw=line)
-    if body.startswith("macro "):
-        return Button(index, "macro", body.split(" ", 1)[1], raw=line)
     # special action name, printed bare e.g. 'profile-cycle-up'
     return Button(index, "special", body, raw=line)
 
@@ -151,38 +156,68 @@ class RealRatbagClient:
     def get_all_buttons(self, device: str) -> list[Button]:
         return [self.get_button(device, i) for i in range(self.get_button_count(device))]
 
-    def set_button_button(self, device: str, index: int, target: int) -> None:
-        self._run(device, "button", str(index), "action", "set", "button", str(target))
+    @staticmethod
+    def _profile_prefix(profile: Optional[int]) -> list[str]:
+        # Button/resolution commands operate on the active profile unless a
+        # profile is given explicitly -- and this device's "active profile"
+        # as reported by ratbagd has repeatedly drifted from what's actually
+        # running on the hardware, so callers that need to be sure (e.g.
+        # "restore factory defaults") should always pass an explicit profile.
+        return [] if profile is None else ["profile", str(profile)]
 
-    def set_button_key(self, device: str, index: int, key: str) -> None:
-        self._run(device, "button", str(index), "action", "set", "key", key)
+    def set_button_button(self, device: str, index: int, target: int, profile: Optional[int] = None) -> None:
+        self._run(device, *self._profile_prefix(profile), "button", str(index), "action", "set", "button", str(target))
 
-    def set_button_special(self, device: str, index: int, special: str) -> None:
-        self._run(device, "button", str(index), "action", "set", "special", special)
+    def set_button_key(self, device: str, index: int, key: str, profile: Optional[int] = None) -> None:
+        self._run(device, *self._profile_prefix(profile), "button", str(index), "action", "set", "key", key)
 
-    def set_button_macro(self, device: str, index: int, tokens: list[str]) -> None:
-        self._run(device, "button", str(index), "action", "set", "macro", *tokens)
+    def set_button_special(self, device: str, index: int, special: str, profile: Optional[int] = None) -> None:
+        self._run(device, *self._profile_prefix(profile), "button", str(index), "action", "set", "special", special)
 
-    def set_button_disabled(self, device: str, index: int) -> None:
-        self._run(device, "button", str(index), "action", "set", "disabled")
+    def set_button_macro(self, device: str, index: int, tokens: list[str], profile: Optional[int] = None) -> None:
+        self._run(device, *self._profile_prefix(profile), "button", str(index), "action", "set", "macro", *tokens)
+
+    def set_button_disabled(self, device: str, index: int, profile: Optional[int] = None) -> None:
+        self._run(device, *self._profile_prefix(profile), "button", str(index), "action", "set", "disabled")
 
     def get_resolutions(self, device: str) -> list[Resolution]:
-        out = self._run(device, "dpi", "get-all")
-        dpis = [d for d in out.strip().split() if d]
-        active_idx = self.get_active_resolution(device)
-        return [
-            Resolution(index=i, dpi=d, active=(i == active_idx))
-            for i, d in enumerate(dpis)
-        ]
+        # NB: `dpi get-all` returns every DPI value the hardware *supports*
+        # (a huge list), not the device's configured resolution stages/slots.
+        # The actual stages must be enumerated one by one via `resolution N
+        # get`, which stops existing (RatbagCtlError) past the last slot.
+        resolutions = []
+        i = 0
+        while True:
+            try:
+                out = self._run(device, "resolution", str(i), "get")
+            except RatbagCtlError:
+                break
+            parsed = None
+            for line in out.splitlines():
+                parsed = _parse_resolution_line(line)
+                if parsed:
+                    break
+            if parsed is None:
+                break
+            resolutions.append(parsed)
+            i += 1
+        return resolutions
+
+    def set_resolution_dpi(self, device: str, index: int, value: int) -> None:
+        self._run(device, "resolution", str(index), "dpi", "set", str(value))
 
     def get_active_resolution(self, device: str) -> int:
         return int(self._run(device, "resolution", "active", "get").strip())
 
     def set_active_resolution(self, device: str, index: int) -> None:
-        self._run(device, "resolution", str(index), "active", "set")
+        self._run(device, "resolution", "active", "set", str(index))
 
     def get_dpi(self, device: str) -> int:
-        return int(self._run(device, "dpi", "get").strip())
+        out = self._run(device, "dpi", "get").strip()
+        m = re.match(r"(\d+)", out)
+        if not m:
+            raise RatbagCtlError(f"could not parse dpi output: {out!r}")
+        return int(m.group(1))
 
     def set_dpi(self, device: str, value: int) -> None:
         self._run(device, "dpi", "set", str(value))
@@ -281,19 +316,19 @@ class MockRatbagClient:
     def get_all_buttons(self, device: str) -> list[Button]:
         return list(self._buttons)
 
-    def set_button_button(self, device: str, index: int, target: int) -> None:
+    def set_button_button(self, device: str, index: int, target: int, profile: Optional[int] = None) -> None:
         self._buttons[index] = Button(index, "button", str(target))
 
-    def set_button_key(self, device: str, index: int, key: str) -> None:
+    def set_button_key(self, device: str, index: int, key: str, profile: Optional[int] = None) -> None:
         self._buttons[index] = Button(index, "key", key)
 
-    def set_button_special(self, device: str, index: int, special: str) -> None:
+    def set_button_special(self, device: str, index: int, special: str, profile: Optional[int] = None) -> None:
         self._buttons[index] = Button(index, "special", special)
 
-    def set_button_macro(self, device: str, index: int, tokens: list[str]) -> None:
+    def set_button_macro(self, device: str, index: int, tokens: list[str], profile: Optional[int] = None) -> None:
         self._buttons[index] = Button(index, "macro", f"[{', '.join(tokens)}]")
 
-    def set_button_disabled(self, device: str, index: int) -> None:
+    def set_button_disabled(self, device: str, index: int, profile: Optional[int] = None) -> None:
         self._buttons[index] = Button(index, "none", "")
 
     def get_resolutions(self, device: str) -> list[Resolution]:
@@ -307,6 +342,9 @@ class MockRatbagClient:
 
     def set_active_resolution(self, device: str, index: int) -> None:
         self._active_resolution = index
+
+    def set_resolution_dpi(self, device: str, index: int, value: int) -> None:
+        self._dpi_stages[index] = value
 
     def get_dpi(self, device: str) -> int:
         return self._dpi_stages[self._active_resolution]

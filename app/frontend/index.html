@@ -28,9 +28,6 @@
       <button class="nav-item" data-section="sensitivity">
         <span class="dot" style="background:#7c5cff"></span>Sensitivity
       </button>
-      <button class="nav-item" data-section="profiles">
-        <span class="dot" style="background:#ffd23e"></span>Profiles
-      </button>
       <button class="nav-item" data-section="settings">
         <span class="dot" style="background:#9aa0aa"></span>Settings
       </button>
@@ -40,7 +37,10 @@
     <div class="status-card">
       <div class="status-row">
         <span class="status-label">Connection</span>
-        <span class="status-value" id="status-mode">&mdash;</span>
+        <span class="status-value">
+          <span class="status-dot" id="status-dot"></span>
+          <span id="status-mode">&mdash;</span>
+        </span>
       </div>
       <div class="status-note" id="status-note"></div>
     </div>
@@ -63,6 +63,14 @@
             Not sure a marker is right? Use <b>Settings &rarr; Verify mapping</b> to test it
             against your real mouse.
           </p>
+          <button class="btn-secondary" id="calibrate-toggle">Calibrate marker positions</button>
+          <div id="calibrate-controls" hidden>
+            <p class="subtitle">Drag any marker onto the real button location in the image.
+              Positions save automatically as you drag.</p>
+            <div class="calibrate-coords" id="calibrate-coords"></div>
+            <button class="btn-secondary" id="calibrate-copy">Copy calibration JSON</button>
+            <button class="btn-secondary" id="calibrate-reset">Reset to defaults</button>
+          </div>
         </div>
 
         <div class="button-list" id="button-list"></div>
@@ -79,9 +87,12 @@
             <option value="button">Mouse button</option>
             <option value="key">Keyboard key</option>
             <option value="special">Special action</option>
-            <option value="macro">Macro</option>
             <option value="disabled">Disabled</option>
           </select>
+          <p class="subtitle" id="editor-macro-note" style="margin:10px 0 0;" hidden>
+            This button currently runs a macro. Macros aren't editable from this screen &mdash;
+            pick a different action type above to replace it.
+          </p>
 
           <div id="action-value-wrap"></div>
 
@@ -119,23 +130,19 @@
       </div>
     </section>
 
-    <!-- PROFILES -->
-    <section class="section" id="section-profiles" hidden>
-      <h1>Onboard Profiles</h1>
-      <p class="subtitle">Switch which profile is active on the mouse.</p>
-      <div class="profiles-list" id="profiles-list"></div>
-    </section>
-
     <!-- SETTINGS -->
     <section class="section" id="section-settings" hidden>
       <h1>Settings</h1>
+      <p class="subtitle">Connection status, button identification tools, and known quirks of this mouse.</p>
+
       <div class="settings-card">
-        <div class="card-label">Connection</div>
-        <p id="settings-status"></p>
+        <div class="settings-card-title"><span class="dot" style="background:#3ec4ff"></span>Connection</div>
+        <p class="settings-card-body" id="settings-status"></p>
       </div>
+
       <div class="settings-card">
-        <div class="card-label">Verify button mapping</div>
-        <p class="subtitle">
+        <div class="settings-card-title"><span class="dot" style="background:#7c5cff"></span>Verify button mapping</div>
+        <p class="settings-card-body">
           The index &rarr; physical button correspondence is auto-detected from your mouse's
           current button actions, not hardcoded &mdash; but it can be wrong if you've already
           remapped buttons away from their factory defaults. To confirm a marker for yourself:
@@ -146,12 +153,33 @@
           <li>Run <code>xev</code> or <code>showkey</code> in a terminal, then physically press that button on the mouse.</li>
           <li>Whichever marker's key shows up is the physical button you pressed &mdash; relabel it below if it doesn't match.</li>
         </ol>
-        <div class="card-label" style="margin-top:18px;">Manual label overrides</div>
+        <div class="card-label" style="margin-top:20px;">Manual label overrides</div>
         <div id="overrides-list"></div>
+        <button class="btn-secondary" id="clear-overrides-btn" style="margin-left:0;">Clear all overrides</button>
       </div>
+
       <div class="settings-card">
-        <div class="card-label">Not supported by ratbagctl</div>
-        <p class="subtitle">RGB lighting and battery level aren't exposed here: the G502 X has no RGB, and ratbagctl's CLI has no battery-level command.</p>
+        <div class="settings-card-title"><span class="dot" style="background:#ffd23e"></span>Restore defaults</div>
+        <p class="settings-card-body">
+          Resets every button &mdash; across all 5 onboard profiles &mdash; back to its factory
+          action (left/right/middle click, wheel tilts, DPI shift, etc). Doesn't touch DPI stages,
+          polling rate, or your button labels/overrides.
+        </p>
+        <button class="btn-secondary" id="restore-defaults-btn" style="margin-left:0;">Restore all buttons to factory defaults</button>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-card-title"><span class="dot" style="background:#e5484d"></span>Known quirks of this mouse</div>
+        <ul class="quirks-list">
+          <li>This mouse has <b>5 onboard profiles</b>. Editing a button always edits whichever
+            profile <code>ratbagd</code> currently reports as active &mdash; which has been observed
+            to drift from what the hardware is actually running. If a change doesn't seem to take
+            effect, use <b>Restore defaults</b> above to reset every profile to a known-good state.</li>
+          <li>Index 11 (factory action <code>resolution-down</code>) has no corresponding physical
+            button on this mouse and is hidden from the UI.</li>
+          <li>RGB lighting and battery level aren't exposed here: the G502 X has no RGB, and
+            <code>ratbagctl</code>'s CLI has no battery-level command.</li>
+        </ul>
       </div>
     </section>
 
@@ -159,6 +187,17 @@
 </div>
 
 <div class="toast" id="toast" hidden></div>
+
+<div class="modal-overlay" id="key-capture-modal" hidden>
+  <div class="modal-card">
+    <div class="modal-title">Capture key</div>
+    <p class="subtitle" style="margin-bottom:14px;">Press the key you want to use.</p>
+    <div class="key-capture-box" id="key-capture-box" tabindex="0">Press any key&hellip; (Esc to cancel)</div>
+    <div style="display:flex; justify-content:flex-end;">
+      <button class="btn-secondary" id="key-capture-cancel" style="margin:0;">Cancel</button>
+    </div>
+  </div>
+</div>
 
 <script src="app.js"></script>
 </body>

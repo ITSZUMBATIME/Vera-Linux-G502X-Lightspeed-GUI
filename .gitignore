@@ -3,3 +3,4 @@ app/backend/__pycache__/
 app/electron/node_modules/
 __pycache__/
 *.pyc
+.directory
