@@ -83,11 +83,6 @@ special behind the wheel is the Thumb Button/DPI-Shift). Anything it can't
 infer shows up marked **unidentified** in the UI (red marker) rather than a
 guessed label.
 
-Note: on this specific mouse, Forward/Backward ended up bound to the
-*opposite* HID button numbers from the standard convention (button 4 =
-forward, button 5 = backward) — confirmed by testing actual back/forward
-navigation, not a bug. See `CLAUDE.md` before "fixing" this back.
-
 To double check any marker against your actual hardware:
 
 1. Go to **Settings → Verify button mapping** for the exact steps (short

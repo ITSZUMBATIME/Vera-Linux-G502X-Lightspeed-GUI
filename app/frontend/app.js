@@ -373,7 +373,7 @@ function renderActionValueField(button) {
   wrap.innerHTML = "";
   if (type === "button") {
     wrap.innerHTML = `
-      <label class="field-label">Target mouse button number (1=left, 2=right, 3=middle, 4=forward, 5=backward on this mouse, ...)</label>
+      <label class="field-label">Target mouse button number (1=left, 2=right, 3=middle, 4=backward, 5=forward, ...)</label>
       <input type="number" id="action-value" min="1" value="${button.action_type === "button" ? button.action_value : 1}">
     `;
   } else if (type === "key") {

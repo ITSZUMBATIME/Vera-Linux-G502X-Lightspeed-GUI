@@ -41,24 +41,21 @@ Confirmed roles (index is the raw 0-based `ratbagctl` index; the UI displays
 | 0 | left | `button 1` | |
 | 1 | right | `button 2` | |
 | 2 | middle | `button 3` | |
-| 3 | backward | `button 4` factory, **now `button 5`** | see swap below |
+| 3 | backward | `button 4` | standard HID convention |
 | 4 | dpiShift ("Thumb Button") | `second-mode` factory, **now a macro** | see below |
-| 5 | forward | `button 5` factory, **now `button 4`** | see swap below |
+| 5 | forward | `button 5` | standard HID convention |
 | 6 | wheelLeft | `wheel-left` | |
 | 7 | wheelRight | `wheel-right` | |
 | 8 | button7 ("Index Finger 1") | `profile-cycle-up` | not yet reconfigured, see Open items |
 | 9 | button8 ("Index Finger 2") | `resolution-up` | not yet reconfigured, see Open items |
 | 10 | *(hidden)* | `resolution-down` | no physical button |
 
-**Forward/Backward are deliberately swapped from the standard HID
-convention.** Standard USB HID numbering says button 4 = back, button 5 =
-forward, and `app.py`'s `detect_roles()` originally assumed this. On this
-user's actual system, back/forward navigation only worked correctly with it
-reversed — confirmed by the user directly, not a guess. Both
-`_BUTTON_NUMBER_TO_ROLE` in `app.py` (auto-detection) and
-`FACTORY_BUTTON_DEFAULTS` (restore-defaults baseline) have been updated to
-match. **If you ever "fix" this back to 4=back/5=forward because it looks
-wrong, you'll be reintroducing a bug the user explicitly corrected.**
+Forward/Backward briefly used a swapped HID convention (button 4=forward,
+5=backward) mid-session after the user reported back/forward navigation
+felt wrong, then were reverted back to standard (4=back, 5=forward) once
+the user confirmed that was actually correct after all. If this comes up
+again, verify empirically (test actual back/forward navigation) rather than
+assuming either direction is correct — this flip-flopped once already.
 
 **"Thumb Button" and "DPI Shift" are the same physical button** (index 4),
 confirmed by wiggle-test (bound to a distinct test key, watched `showkey`
@@ -178,7 +175,5 @@ its refresh through the full `/api/device`/`loadDevice()` path.
    removed Macros page, new endpoints). Don't assume it works — check
    `app/electron/main.js` (or equivalent) still points at valid routes/DOM
    IDs before telling the user to rely on it.
-3. **README.md** setup instructions are still accurate for the basic
-   run/setup flow, but its "Verifying the button-marker mapping" section
-   pre-dates the swapped Forward/Backward convention and the Thumb Button
-   naming above — worth a pass if it causes confusion.
+3. **README.md** setup instructions are accurate for the basic run/setup
+   flow and have been kept in sync with the button model above.

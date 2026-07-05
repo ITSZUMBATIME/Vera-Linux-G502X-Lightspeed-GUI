@@ -137,12 +137,8 @@ _BUTTON_NUMBER_TO_ROLE = {
     "1": "left",
     "2": "right",
     "3": "middle",
-    # Swapped from the standard HID convention (4=back, 5=forward) on
-    # 2026-07-06 at the user's explicit request -- back/forward navigation
-    # in their actual setup responds correctly this way round, so this
-    # reflects real confirmed behavior, not a guess.
-    "4": "forward",
-    "5": "backward",
+    "4": "backward",
+    "5": "forward",
 }
 
 _SPECIAL_TO_ROLE = {
@@ -180,10 +176,8 @@ def detect_roles(buttons) -> dict[int, dict]:
 # actions, captured directly from `ratbagctl button N get` before any
 # remapping happened.
 # NB: this is the user's confirmed-working baseline for this specific mouse,
-# not necessarily the literal out-of-box factory state -- indices 3/5 are
-# swapped from the standard HID convention (button 4/5) because that's how
-# this system actually interprets back/forward, and index 4 carries the
-# user's own Thumb Button macro rather than its original 'second-mode'
+# not necessarily the literal out-of-box factory state -- index 4 carries
+# the user's own Thumb Button macro rather than its original 'second-mode'
 # action. "Restore defaults" is a recovery safety net for profile drift/
 # stray edits, so it should recover to what the user actually wants running,
 # not to Logitech's factory shipment state.
@@ -191,9 +185,9 @@ FACTORY_BUTTON_DEFAULTS = {
     0: ("button", "1"),
     1: ("button", "2"),
     2: ("button", "3"),
-    3: ("button", "5"),
+    3: ("button", "4"),
     4: ("macro", "KEY_SEMICOLON"),
-    5: ("button", "4"),
+    5: ("button", "5"),
     6: ("special", "wheel-left"),
     7: ("special", "wheel-right"),
     8: ("special", "profile-cycle-up"),
