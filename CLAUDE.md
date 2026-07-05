@@ -1,4 +1,4 @@
-# G502 X Control Center — status & plan
+# Vera — status & plan
 
 ## IMPORTANT — commit and push every session
 
@@ -11,10 +11,18 @@ don't wait to be asked.)
 
 ## What this is
 
-A Flask + vanilla JS/HTML/CSS app for configuring a Logitech G502 X
+Vera is a Flask + vanilla JS/HTML/CSS app for configuring a Logitech G502 X
 LIGHTSPEED on Linux via `ratbagctl`/`ratbagd`, tailored to one specific
 physical mouse (not a general product) — several things below are hardcoded
 because they were empirically confirmed against *this* mouse, not assumed.
+Named/themed after the Aloe Vera plant (`Vera Logo Ascii` at the repo root
+is the source art) — the UI accent palette is various shades of green, and
+that ASCII art is rendered into `app/frontend/assets/vera-icon*.png` /
+`vera-about-logo.png` (see `app/frontend/style.css`'s `--accent` and the
+Settings page's "About Vera" card). If the logo/palette ever need
+regenerating (e.g. a new source ASCII art), the density-ramp-to-color
+mapping approach used is straightforward to redo with Pillow — there's no
+saved generator script, it was done ad hoc in a scratch file this session.
 
 - `app/backend/app.py` — Flask routes, role auto-detection, factory-defaults
   recovery.

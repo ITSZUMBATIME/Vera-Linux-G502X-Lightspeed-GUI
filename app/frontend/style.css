@@ -9,7 +9,7 @@
   --text: #f2f0ec;
   --muted: #85888f;
   --dim: #5d6068;
-  --accent: #3ec4ff;
+  --accent: #3ecf7a;
 }
 
 body {
@@ -52,9 +52,8 @@ body {
 .logo-mark {
   width: 36px;
   height: 36px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, #3ec4ff, #7c5cff);
   flex-shrink: 0;
+  object-fit: contain;
 }
 
 .logo-title { font-weight: 700; font-size: 15px; line-height: 1.2; }
@@ -139,7 +138,7 @@ body {
   margin-left: -13px;
   margin-top: -13px;
   border-radius: 50%;
-  background: rgba(62, 196, 255, 0.18);
+  background: rgba(62, 207, 122, 0.18);
   border: 2px solid var(--accent);
   cursor: pointer;
   display: flex;
@@ -333,6 +332,10 @@ select, input[type="text"], input[type="number"] {
 .quirks-list li:last-child { margin-bottom: 0; }
 .quirks-list code { font-family: 'JetBrains Mono', monospace; background: var(--card); padding: 1px 5px; border-radius: 4px; }
 
+.about-card { display: flex; align-items: center; gap: 22px; }
+.about-logo { width: 220px; flex-shrink: 0; border-radius: 8px; }
+.about-text { min-width: 0; }
+
 .dpi-value-row { display: flex; align-items: baseline; gap: 10px; }
 
 .dpi-number {
@@ -383,7 +386,7 @@ select, input[type="text"], input[type="number"] {
   cursor: pointer;
 }
 
-.stage-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(62, 196, 255, 0.1); }
+.stage-chip.active { border-color: var(--accent); color: var(--accent); background: rgba(62, 207, 122, 0.1); }
 
 .modal-overlay {
   position: fixed;
@@ -404,7 +407,7 @@ select, input[type="text"], input[type="number"] {
 }
 .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
 .key-capture-box {
-  background: rgba(62, 196, 255, 0.1);
+  background: rgba(62, 207, 122, 0.1);
   color: var(--accent);
   border: 1.5px dashed var(--accent);
   border-radius: 9px;

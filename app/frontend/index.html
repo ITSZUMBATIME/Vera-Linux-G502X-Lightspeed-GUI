@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>G502 X Control Center</title>
+<title>Vera</title>
+<link rel="icon" type="image/png" href="assets/vera-icon.png">
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -14,22 +15,22 @@
 <div class="app">
   <div class="sidebar">
     <div class="logo">
-      <div class="logo-mark"></div>
+      <img class="logo-mark" src="assets/vera-icon.png" alt="Vera">
       <div>
-        <div class="logo-title">Mouse Control</div>
+        <div class="logo-title">Vera</div>
         <div class="logo-sub" id="device-name">G502 X</div>
       </div>
     </div>
 
     <nav class="nav">
       <button class="nav-item active" data-section="buttons">
-        <span class="dot" style="background:#3ec4ff"></span>Buttons
+        <span class="dot" style="background:#3ecf7a"></span>Buttons
       </button>
       <button class="nav-item" data-section="sensitivity">
-        <span class="dot" style="background:#7c5cff"></span>Sensitivity
+        <span class="dot" style="background:#22a563"></span>Sensitivity
       </button>
       <button class="nav-item" data-section="settings">
-        <span class="dot" style="background:#9aa0aa"></span>Settings
+        <span class="dot" style="background:#157a45"></span>Settings
       </button>
     </nav>
 
@@ -136,12 +137,12 @@
       <p class="subtitle">Connection status, button identification tools, and known quirks of this mouse.</p>
 
       <div class="settings-card">
-        <div class="settings-card-title"><span class="dot" style="background:#3ec4ff"></span>Connection</div>
+        <div class="settings-card-title"><span class="dot" style="background:#3ecf7a"></span>Connection</div>
         <p class="settings-card-body" id="settings-status"></p>
       </div>
 
       <div class="settings-card">
-        <div class="settings-card-title"><span class="dot" style="background:#7c5cff"></span>Verify button mapping</div>
+        <div class="settings-card-title"><span class="dot" style="background:#22a563"></span>Verify button mapping</div>
         <p class="settings-card-body">
           The index &rarr; physical button correspondence is auto-detected from your mouse's
           current button actions, not hardcoded &mdash; but it can be wrong if you've already
@@ -159,7 +160,7 @@
       </div>
 
       <div class="settings-card">
-        <div class="settings-card-title"><span class="dot" style="background:#ffd23e"></span>Restore defaults</div>
+        <div class="settings-card-title"><span class="dot" style="background:#157a45"></span>Restore defaults</div>
         <p class="settings-card-body">
           Resets every button &mdash; across all 5 onboard profiles &mdash; back to your confirmed
           working setup (left/right/middle click, standard Forward/Backward actions, Thumb
@@ -171,7 +172,7 @@
       </div>
 
       <div class="settings-card">
-        <div class="settings-card-title"><span class="dot" style="background:#e5484d"></span>Known quirks of this mouse</div>
+        <div class="settings-card-title"><span class="dot" style="background:#9fe6b8"></span>Known quirks of this mouse</div>
         <ul class="quirks-list">
           <li>This mouse has <b>5 onboard profiles</b>. Editing a button always edits whichever
             profile <code>ratbagd</code> currently reports as active &mdash; which has been observed
@@ -182,6 +183,14 @@
           <li>RGB lighting and battery level aren't exposed here: the G502 X has no RGB, and
             <code>ratbagctl</code>'s CLI has no battery-level command.</li>
         </ul>
+      </div>
+
+      <div class="settings-card about-card">
+        <img src="assets/vera-about-logo.png" alt="Vera" class="about-logo">
+        <div class="about-text">
+          <div class="settings-card-title" style="margin-bottom:6px;">Vera</div>
+          <p class="settings-card-body">A G502 X Control Center, named and themed after the Aloe Vera plant.</p>
+        </div>
       </div>
     </section>
 

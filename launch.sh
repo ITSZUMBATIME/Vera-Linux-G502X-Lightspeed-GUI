@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Starts the G502 X Control Center backend (if not already running) and
-# opens it in your default browser.
+# Starts Vera's backend (if not already running) and opens it in your
+# default browser.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/app/backend"
 PORT="${PORT:-5000}"
 URL="http://127.0.0.1:${PORT}"
-LOG="/tmp/g502x-control-center.log"
+LOG="/tmp/vera-control-center.log"
 
 if ! curl -s -o /dev/null "${URL}/api/status"; then
   cd "$DIR"

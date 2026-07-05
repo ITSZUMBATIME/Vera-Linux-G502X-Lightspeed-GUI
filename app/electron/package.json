@@ -1,7 +1,7 @@
 {
-  "name": "g502x-control-center",
+  "name": "vera",
   "version": "0.1.0",
-  "description": "Desktop shell for the G502 X Control Center",
+  "description": "Vera — desktop shell for the G502 X Control Center",
   "main": "main.js",
   "private": true,
   "scripts": {

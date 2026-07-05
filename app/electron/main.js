@@ -52,6 +52,7 @@ async function createWindow() {
     width: 1400,
     height: 900,
     backgroundColor: '#08090b',
+    icon: path.join(__dirname, '..', 'frontend', 'assets', 'vera-icon-512.png'),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,

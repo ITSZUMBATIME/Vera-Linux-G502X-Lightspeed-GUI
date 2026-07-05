@@ -1,4 +1,6 @@
-# G502 X Control Center — setup & run
+# Vera — setup & run
+
+Vera is a G502 X Control Center for the Logitech G502 X LIGHTSPEED on Linux.
 
 This app has three parts:
 
